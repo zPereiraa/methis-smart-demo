@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>METHIS — a iniciar</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/fhirclient@2/build/fhir-client.js"></script>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #f3f4f6; /* gray-100 */
+      height: 100vh;
+      margin: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .box {
+      text-align: center;
+      color: #4b5563; /* gray-600 */
+    }
+    .spinner {
+      width: 36px;
+      height: 36px;
+      border: 3px solid #dbeafe;
+      border-top-color: #3b82f6; /* blue-500 */
+      border-radius: 50%;
+      margin: 0 auto 16px;
+      animation: spin 0.8s linear infinite;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <div class="spinner"></div>
+    <p>A ligar ao METHIS…</p>
+  </div>
+  <script>
+    // Passo 1 do EHR Launch: pedir autorização ao servidor FHIR do sandbox.
+    // O FHIR.oauth2.authorize trata do redirect para o authorize endpoint,
+    // incluindo os parâmetros launch + iss que o sandbox nos deu.
+    FHIR.oauth2.authorize({
+      client_id: "SUBSTITUIR_PELO_CLIENT_ID", // dado pelo sandbox ao registar a app
+      scope: "launch openid fhirUser profile patient/Patient.read patient/Encounter.read patient/Observation.read patient/Condition.read",
+      redirect_uri: location.href.replace("launch.html", "index.html")
+    });
+  </script>
+</body>
+</html>

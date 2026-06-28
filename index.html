@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt">
+<head>
+  <meta charset="UTF-8">
+  <title>METHIS</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <script src="https://cdn.jsdelivr.net/npm/fhirclient@2/build/fhir-client.js"></script>
+  <style>
+    :root {
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-400: #9ca3af;
+      --gray-500: #6b7280;
+      --gray-600: #4b5563;
+      --gray-700: #374151;
+      --gray-800: #1f2937;
+      --gray-900: #111827;
+      --blue-50: #eff6ff;
+      --blue-500: #3b82f6;
+      --blue-600: #2563eb;
+      --blue-700: #1d4ed8;
+      --amber-50: #fffbeb;
+      --amber-400: #fbbf24;
+      --amber-700: #b45309;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--gray-100);
+      color: var(--gray-900);
+      font-size: 14px;
+    }
+    header {
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+    }
+    .header-inner {
+      max-width: 72rem;
+      margin: 0 auto;
+      padding: 14px 20px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .brand {
+      font-weight: 800;
+      font-size: 20px;
+      color: var(--gray-800);
+      letter-spacing: -0.02em;
+    }
+    .brand span { color: var(--blue-600); }
+    .demo-pill {
+      background: var(--amber-50);
+      color: var(--amber-700);
+      border: 1px solid #fde68a;
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.03em;
+      text-transform: uppercase;
+      padding: 4px 10px;
+      border-radius: 999px;
+    }
+    main {
+      max-width: 72rem;
+      margin: 24px auto;
+      padding: 0 20px 60px;
+    }
+    .card {
+      background: #fff;
+      box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+      border-radius: 6px;
+      padding: 24px;
+      margin-bottom: 20px;
+    }
+    .card h1 {
+      font-weight: 700;
+      font-size: 19px;
+      color: var(--gray-600);
+      letter-spacing: -0.01em;
+      border-bottom: 1px solid var(--gray-200);
+      padding-bottom: 16px;
+      margin: 0 0 20px;
+    }
+    .patient-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+    .avatar {
+      width: 56px; height: 56px;
+      border-radius: 50%;
+      background: var(--blue-50);
+      color: var(--blue-600);
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 20px;
+      flex-shrink: 0;
+    }
+    .patient-name {
+      font-weight: 700;
+      font-size: 17px;
+      color: var(--gray-900);
+    }
+    .patient-meta {
+      color: var(--gray-500);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 20px;
+    }
+    .stat {
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 14px 16px;
+    }
+    .stat-label {
+      font-size: 11px;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--gray-400);
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .stat-value {
+      font-size: 16px;
+      color: var(--gray-800);
+      font-weight: 600;
+    }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      text-align: left;
+      color: var(--gray-400);
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.03em;
+      padding: 8px 10px;
+      border-bottom: 1px solid var(--gray-200);
+    }
+    td {
+      padding: 10px 10px;
+      border-bottom: 1px solid var(--gray-100);
+      color: var(--gray-700);
+    }
+    .badge {
+      display: inline-block;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: var(--blue-50);
+      color: var(--blue-700);
+    }
+    .empty {
+      color: var(--gray-400);
+      font-style: italic;
+      padding: 12px 0;
+    }
+    .source-note {
+      margin-top: 14px;
+      font-size: 12px;
+      color: var(--gray-400);
+      border-top: 1px dashed var(--gray-200);
+      padding-top: 10px;
+    }
+    .center-box {
+      max-width: 480px;
+      margin: 80px auto;
+      text-align: center;
+      color: var(--gray-500);
+    }
+    .error-box {
+      background: #fef2f2;
+      border: 1px solid #fecaca;
+      color: #b91c1c;
+      padding: 16px;
+      border-radius: 6px;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-inner">
+      <div class="brand">METH<span>IS</span></div>
+      <div class="demo-pill">Demo · dados do sandbox SMART Health IT</div>
+    </div>
+  </header>
+
+  <main id="app">
+    <div class="center-box">
+      <p>A carregar dados clínicos…</p>
+    </div>
+  </main>
+
+  <script>
+    const app = document.getElementById("app");
+
+    function initials(name) {
+      if (!name) return "?";
+      const parts = name.trim().split(/\s+/);
+      return ((parts[0]?.[0] || "") + (parts[parts.length - 1]?.[0] || "")).toUpperCase();
+    }
+
+    function humanName(patient) {
+      const n = (patient.name && patient.name[0]) || {};
+      return [
+        ...(n.given || []),
+        n.family || ""
+      ].filter(Boolean).join(" ") || "Paciente sem nome";
+    }
+
+    function age(birthDate) {
+      if (!birthDate) return "—";
+      const dob = new Date(birthDate);
+      const diff = Date.now() - dob.getTime();
+      return Math.floor(diff / (365.25 * 24 * 3600 * 1000)) + " anos";
+    }
+
+    function genderLabel(g) {
+      return { male: "Masculino", female: "Feminino", other: "Outro" }[g] || "—";
+    }
+
+    function fmtDate(d) {
+      if (!d) return "—";
+      try {
+        return new Date(d).toLocaleDateString("pt-PT", { year: "numeric", month: "short", day: "2-digit" });
+      } catch { return d; }
+    }
+
+    function render(patient, encounters, conditions, observations) {
+      const name = humanName(patient);
+      app.innerHTML = `
+        <div class="card">
+          <h1>Ficha do paciente</h1>
+          <div class="patient-row">
+            <div class="avatar">${initials(name)}</div>
+            <div>
+              <div class="patient-name">${name}</div>
+              <div class="patient-meta">${genderLabel(patient.gender)} · ${age(patient.birthDate)} · Nascimento: ${fmtDate(patient.birthDate)}</div>
+            </div>
+          </div>
+          <div class="grid">
+            <div class="stat">
+              <div class="stat-label">ID FHIR</div>
+              <div class="stat-value">${patient.id}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Consultas (encounters)</div>
+              <div class="stat-value">${encounters.length}</div>
+            </div>
+            <div class="stat">
+              <div class="stat-label">Condições registadas</div>
+              <div class="stat-value">${conditions.length}</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <h1>As minhas consultas</h1>
+          ${renderEncounterTable(encounters)}
+          <p class="source-note">Fonte: recurso <strong>Encounter</strong> do servidor FHIR do sandbox SMART Health IT — não é dado real do METHIS.</p>
+        </div>
+
+        <div class="card">
+          <h1>Condições</h1>
+          ${renderConditionList(conditions)}
+        </div>
+
+        <div class="card">
+          <h1>Observações recentes</h1>
+          ${renderObservationTable(observations)}
+        </div>
+      `;
+    }
+
+    function renderEncounterTable(encounters) {
+      if (!encounters.length) return `<p class="empty">Sem consultas registadas no sandbox para este paciente.</p>`;
+      const rows = encounters.slice(0, 10).map(e => {
+        const date = fmtDate(e.period?.start);
+        const type = e.type?.[0]?.text || e.type?.[0]?.coding?.[0]?.display || "Consulta";
+        const status = e.status || "—";
+        return `<tr>
+          <td>${date}</td>
+          <td>${type}</td>
+          <td><span class="badge">${status}</span></td>
+        </tr>`;
+      }).join("");
+      return `<table>
+        <thead><tr><th>Data</th><th>Tipo</th><th>Estado</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    function renderConditionList(conditions) {
+      if (!conditions.length) return `<p class="empty">Sem condições registadas no sandbox para este paciente.</p>`;
+      const rows = conditions.slice(0, 10).map(c => {
+        const text = c.code?.text || c.code?.coding?.[0]?.display || "Condição sem descrição";
+        const onset = fmtDate(c.onsetDateTime);
+        return `<tr><td>${text}</td><td>${onset}</td></tr>`;
+      }).join("");
+      return `<table>
+        <thead><tr><th>Condição</th><th>Início</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    function renderObservationTable(observations) {
+      if (!observations.length) return `<p class="empty">Sem observações disponíveis para este paciente.</p>`;
+      const rows = observations.slice(0, 10).map(o => {
+        const label = o.code?.text || o.code?.coding?.[0]?.display || "Observação";
+        let value = "—";
+        if (o.valueQuantity) value = `${o.valueQuantity.value} ${o.valueQuantity.unit || ""}`;
+        else if (o.valueString) value = o.valueString;
+        else if (o.valueCodeableConcept) value = o.valueCodeableConcept.text || "—";
+        const date = fmtDate(o.effectiveDateTime);
+        return `<tr><td>${label}</td><td>${value}</td><td>${date}</td></tr>`;
+      }).join("");
+      return `<table>
+        <thead><tr><th>Tipo</th><th>Valor</th><th>Data</th></tr></thead>
+        <tbody>${rows}</tbody>
+      </table>`;
+    }
+
+    function renderError(err) {
+      app.innerHTML = `
+        <div class="card">
+          <h1>Não foi possível carregar os dados</h1>
+          <div class="error-box">${err}</div>
+        </div>`;
+    }
+
+    FHIR.oauth2.ready()
+      .then(client => {
+        return Promise.all([
+          client.patient.read(),
+          client.patient.request("Encounter?_sort=-date&_count=20").catch(() => ({ entry: [] })),
+          client.patient.request("Condition").catch(() => ({ entry: [] })),
+          client.patient.request("Observation?_sort=-date&_count=20").catch(() => ({ entry: [] }))
+        ]).then(([patient, encBundle, condBundle, obsBundle]) => {
+          const encounters = (encBundle.entry || []).map(e => e.resource);
+          const conditions = (condBundle.entry || []).map(e => e.resource);
+          const observations = (obsBundle.entry || []).map(e => e.resource);
+          render(patient, encounters, conditions, observations);
+        });
+      })
+      .catch(err => {
+        console.error(err);
+        renderError(err.message || String(err));
+      });
+  </script>
+</body>
+</html>
