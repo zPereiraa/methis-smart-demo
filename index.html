@@ -180,6 +180,114 @@
       border-radius: 6px;
       font-size: 13px;
     }
+    tr.clickable { cursor: pointer; }
+    tr.clickable:hover td { background: var(--blue-50); }
+
+    .overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(17, 24, 39, 0.35);
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity 0.2s ease;
+      z-index: 40;
+    }
+    .overlay.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .slideover {
+      position: fixed;
+      top: 0;
+      right: 0;
+      height: 100vh;
+      width: min(420px, 100vw);
+      background: #fff;
+      box-shadow: -4px 0 16px rgba(0,0,0,0.12);
+      transform: translateX(100%);
+      transition: transform 0.25s ease;
+      z-index: 50;
+      display: flex;
+      flex-direction: column;
+    }
+    .slideover.open { transform: translateX(0); }
+    .slideover-header {
+      padding: 18px 20px;
+      border-bottom: 1px solid var(--gray-200);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .slideover-header h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--gray-800);
+      margin: 0;
+    }
+    .slideover-close {
+      background: none;
+      border: none;
+      font-size: 20px;
+      color: var(--gray-400);
+      cursor: pointer;
+      line-height: 1;
+      padding: 4px;
+    }
+    .slideover-close:hover { color: var(--gray-700); }
+    .slideover-body {
+      padding: 20px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .detail-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-bottom: 1px solid var(--gray-100);
+      font-size: 13px;
+    }
+    .detail-label {
+      color: var(--gray-400);
+      font-weight: 600;
+      text-transform: uppercase;
+      font-size: 11px;
+      letter-spacing: 0.03em;
+      flex-shrink: 0;
+      padding-top: 1px;
+    }
+    .detail-value {
+      color: var(--gray-800);
+      text-align: right;
+      word-break: break-word;
+    }
+    .raw-json {
+      margin-top: 16px;
+      background: var(--gray-100);
+      border-radius: 6px;
+      padding: 12px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 11px;
+      color: var(--gray-700);
+      white-space: pre-wrap;
+      word-break: break-word;
+      max-height: 320px;
+      overflow-y: auto;
+    }
+    .raw-json-toggle {
+      margin-top: 16px;
+      background: none;
+      border: 1px solid var(--gray-200);
+      border-radius: 6px;
+      padding: 8px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--gray-600);
+      cursor: pointer;
+      width: 100%;
+      text-align: left;
+    }
+    .raw-json-toggle:hover { background: var(--gray-100); }
   </style>
 </head>
 <body>
@@ -195,6 +303,15 @@
       <p>A carregar dados clínicos…</p>
     </div>
   </main>
+
+  <div class="overlay" id="overlay"></div>
+  <aside class="slideover" id="slideover">
+    <div class="slideover-header">
+      <h2 id="slideover-title">Detalhe</h2>
+      <button class="slideover-close" id="slideover-close" aria-label="Fechar">&times;</button>
+    </div>
+    <div class="slideover-body" id="slideover-body"></div>
+  </aside>
 
   <script>
     const app = document.getElementById("app");
@@ -231,7 +348,109 @@
       } catch { return d; }
     }
 
+    function fmtDateTime(d) {
+      if (!d) return "—";
+      try {
+        return new Date(d).toLocaleString("pt-PT", { year: "numeric", month: "short", day: "2-digit", hour: "2-digit", minute: "2-digit" });
+      } catch { return d; }
+    }
+
+    // Índices por id, para abrir o detalhe ao clicar numa linha
+    let encounterIndex = {};
+    let observationIndex = {};
+
+    // ---- Slide-over (painel lateral) ----
+    const overlay = document.getElementById("overlay");
+    const slideover = document.getElementById("slideover");
+    const slideoverTitle = document.getElementById("slideover-title");
+    const slideoverBody = document.getElementById("slideover-body");
+
+    function openSlideover(title, bodyHtml) {
+      slideoverTitle.textContent = title;
+      slideoverBody.innerHTML = bodyHtml;
+      overlay.classList.add("open");
+      slideover.classList.add("open");
+    }
+
+    function closeSlideover() {
+      overlay.classList.remove("open");
+      slideover.classList.remove("open");
+    }
+
+    document.getElementById("slideover-close").addEventListener("click", closeSlideover);
+    overlay.addEventListener("click", closeSlideover);
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") closeSlideover();
+    });
+
+    function detailRow(label, value) {
+      return `<div class="detail-row">
+        <div class="detail-label">${label}</div>
+        <div class="detail-value">${value ?? "—"}</div>
+      </div>`;
+    }
+
+    function rawJsonBlock(resource) {
+      return `
+        <button class="raw-json-toggle" onclick="this.nextElementSibling.style.display = this.nextElementSibling.style.display === 'none' ? 'block' : 'none'">
+          Ver recurso FHIR em bruto (JSON) ▾
+        </button>
+        <pre class="raw-json" style="display:none">${escapeHtml(JSON.stringify(resource, null, 2))}</pre>
+      `;
+    }
+
+    function escapeHtml(s) {
+      return s.replace(/[&<>'"]/g, c => ({
+        "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;"
+      }[c]));
+    }
+
+    function openEncounterDetail(id) {
+      const e = encounterIndex[id];
+      if (!e) return;
+      const type = e.type?.[0]?.text || e.type?.[0]?.coding?.[0]?.display || "Consulta";
+      const reason = e.reasonCode?.[0]?.text || e.reasonCode?.[0]?.coding?.[0]?.display;
+      const location = e.location?.[0]?.location?.display;
+      const body = `
+        ${detailRow("Tipo", type)}
+        ${detailRow("Estado", `<span class="badge">${e.status || "—"}</span>`)}
+        ${detailRow("Início", fmtDateTime(e.period?.start))}
+        ${detailRow("Fim", fmtDateTime(e.period?.end))}
+        ${detailRow("Motivo", reason)}
+        ${detailRow("Local", location)}
+        ${detailRow("ID FHIR", e.id)}
+        ${rawJsonBlock(e)}
+      `;
+      openSlideover("Consulta (Encounter)", body);
+    }
+
+    function openObservationDetail(id) {
+      const o = observationIndex[id];
+      if (!o) return;
+      const label = o.code?.text || o.code?.coding?.[0]?.display || "Observação";
+      let value = "—";
+      if (o.valueQuantity) value = `${o.valueQuantity.value} ${o.valueQuantity.unit || ""}`;
+      else if (o.valueString) value = o.valueString;
+      else if (o.valueCodeableConcept) value = o.valueCodeableConcept.text || "—";
+      const category = o.category?.[0]?.text || o.category?.[0]?.coding?.[0]?.display;
+      const body = `
+        ${detailRow("Tipo", label)}
+        ${detailRow("Valor", value)}
+        ${detailRow("Categoria", category)}
+        ${detailRow("Estado", `<span class="badge">${o.status || "—"}</span>`)}
+        ${detailRow("Data efetiva", fmtDateTime(o.effectiveDateTime))}
+        ${detailRow("ID FHIR", o.id)}
+        ${rawJsonBlock(o)}
+      `;
+      openSlideover("Observação", body);
+    }
+
     function render(patient, encounters, conditions, observations) {
+      encounterIndex = {};
+      encounters.forEach(e => { if (e.id) encounterIndex[e.id] = e; });
+      observationIndex = {};
+      observations.forEach(o => { if (o.id) observationIndex[o.id] = o; });
+
       const name = humanName(patient);
       app.innerHTML = `
         <div class="card">
@@ -283,7 +502,7 @@
         const date = fmtDate(e.period?.start);
         const type = e.type?.[0]?.text || e.type?.[0]?.coding?.[0]?.display || "Consulta";
         const status = e.status || "—";
-        return `<tr>
+        return `<tr class="clickable" onclick="openEncounterDetail('${e.id}')">
           <td>${date}</td>
           <td>${type}</td>
           <td><span class="badge">${status}</span></td>
@@ -317,7 +536,7 @@
         else if (o.valueString) value = o.valueString;
         else if (o.valueCodeableConcept) value = o.valueCodeableConcept.text || "—";
         const date = fmtDate(o.effectiveDateTime);
-        return `<tr><td>${label}</td><td>${value}</td><td>${date}</td></tr>`;
+        return `<tr class="clickable" onclick="openObservationDetail('${o.id}')"><td>${label}</td><td>${value}</td><td>${date}</td></tr>`;
       }).join("");
       return `<table>
         <thead><tr><th>Tipo</th><th>Valor</th><th>Data</th></tr></thead>
